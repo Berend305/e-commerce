@@ -46,5 +46,5 @@ jobs:
 
     - name: Deploy to k3s
       run: |
-        kubectl apply -f ./k3s/deployment.yaml
-        kubectl apply -f ./k3s/service.yaml
+        kubectl apply -f ../k3s/deployment.yaml
+        kubectl apply -f ../k3s/service.yaml

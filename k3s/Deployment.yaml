@@ -1,32 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: web-deployment
-  namespace: default
+  name: nginx-deployment
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: web
+      app: nginx
   template:
     metadata:
       labels:
-        app: web
+        app: nginx
     spec:
       containers:
-      - name: php-apache
-        image: ${{ secrets.DOCKER_USERNAME }}/my-ecommerce-app:latest
+      - name: nginx
+        image: nginx:latest
         ports:
         - containerPort: 80
-        env:
-        - name: DB_HOST
-          value: "db-service"
-        - name: DB_NAME
-          value: "ecommerce_db"
-        - name: DB_USER
-          value: "ecommerce_user"
-        - name: DB_PASS
-          valueFrom:
-            secretKeyRef:
-              name: db-secret
-              key: password
