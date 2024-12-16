@@ -17,7 +17,7 @@ try {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Onze Producten</title>
+    <title>Onze Producteen</title>
     <style>
         .product-grid {
             display: flex;
