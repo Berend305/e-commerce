@@ -1,24 +1,20 @@
 <?php
 require 'config.php';
 
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
+try {
+    $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME;
+    $pdo = new PDO($dsn, DB_USER, DB_PASSWORD);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
+    $query = "SELECT id, name, price FROM products";
+    $stmt = $pdo->query($query);
 
-$sql = "SELECT id, name, price FROM products";
-$result = $conn->query(query: $sql);
-
-if ($result->num_rows > 0) {
     echo "<h1>Product List</h1><ul>";
-    while($row = $result->fetch_assoc()) {
-        echo "<li>" . $row["name"] . " - $" . $row["price"] . "</li>";
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        echo "<li>{$row['name']} - \${$row['price']}</li>";
     }
     echo "</ul>";
-} else {
-    echo "<p>No products found</p>";
+} catch (PDOException $e) {
+    echo "Database connection failed: " . $e->getMessage();
 }
-
-$conn->close();
 ?>
