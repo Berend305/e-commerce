@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: web
-        image: <dockerhub-user>/ecommerce-web:latest
+        image: berend305/ecommerce-web:latest
         ports:
         - containerPort: 80
         env:
