@@ -1,0 +1,7 @@
+# Ignore Docker cache
+**/node_modules
+**/.dockerignore
+**/vendor
+
+# Ignore local Kubernetes config
+.kube/config

@@ -1,0 +1,39 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted # k3s is lokaal bereikbaar via je runner
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Build en Push Docker Image
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      run: |
+        docker build -t $DOCKER_USERNAME/ecommerce-web:latest ./web
+        echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+        docker push $DOCKER_USERNAME/ecommerce-web:latest
+
+    - name: Configure Kubernetes Context
+      env:
+        KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG_CONTENT }}
+      run: |
+        echo "$KUBECONFIG_CONTENT" > $HOME/.kube/config
+
+    - name: Deploy to k3s Cluster
+      run: |
+        kubectl apply -f k3s/secrets.yaml
+        kubectl apply -f k3s/web-deployment.yaml
+        kubectl apply -f k3s/db-deployment.yaml
+
+    - name: Verify Deployment
+      run: |
+        kubectl get pods
+        kubectl get services

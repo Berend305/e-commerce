@@ -1,0 +1,38 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ecommerce-db
+spec:
+  selector:
+    matchLabels:
+      app: ecommerce-db
+  template:
+    metadata:
+      labels:
+        app: ecommerce-db
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:5.7
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: password
+        - name: MYSQL_DATABASE
+          value: ecommerce
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ecommerce-db
+spec:
+  ports:
+  - port: 3306
+    targetPort: 3306
+  selector:
+    app: ecommerce-db
