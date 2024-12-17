@@ -25,9 +25,10 @@ jobs:
       env:
         KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG_CONTENT }}
       run: |
-        mkdir -p $HOME/.kube  # Maak de .kube directory als deze niet bestaat
-        echo "$KUBECONFIG_CONTENT" > $HOME/.kube/config
-        chmod 600 $HOME/.kube/config  # Zorg ervoor dat het bestand veilig is
+        mkdir -p $HOME/.kube
+        echo "$KUBECONFIG_CONTENT" | base64 -d > $HOME/.kube/config
+        chmod 600 $HOME/.kube/config
+      
   
 
     - name: Deploy to k3s Cluster
