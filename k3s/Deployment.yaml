@@ -14,6 +14,6 @@ spec:
     spec:
       containers:
       - name: ecommerce
-        image: YOUR_DOCKER_USERNAME/my-ecommerce-app:latest
+        image: berend305/my-ecommerce-app:latest
         ports:
         - containerPort: 80
