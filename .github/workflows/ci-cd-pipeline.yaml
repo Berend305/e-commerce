@@ -32,17 +32,33 @@ jobs:
     needs: build-and-push
 
     steps:
-    - name: Checkout Code
+    - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Set up SSH keys
+    - name: Set up SSH for Bastion Host
       run: |
         mkdir -p ~/.ssh
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
+        # Optionally, add the bastion host to known hosts to avoid host verification issues
+        ssh-keyscan -H 192.168.151.244 >> ~/.ssh/known_hosts
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
-    - name: Connect to Bastion Host and Deploy to K3s
+    - name: Test SSH connection to Bastion Host
       run: |
-        # Open an SSH connection via the bastion host and execute kubectl commands
-        ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }} \
-        "kubectl apply -f ./k3s/deployment.yaml && kubectl apply -f ./k3s/service.yaml"
+        # Test SSH connection to Bastion Host
+        ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa berend305@192.168.151.244 "hostname"
+      
+    - name: Set up kubectl for k3s
+      run: |
+        mkdir -p $HOME/.kube
+        echo "${{ secrets.K3S_KUBECONFIG }}" > $HOME/.kube/config
+        chmod 600 $HOME/.kube/config
+
+    - name: Deploy to K3s via Bastion Host
+      run: |
+        # Use SSH to connect to the bastion host and execute kubectl commands to deploy
+        ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa berend305@192.168.151.244 "kubectl apply -f ./k3s/deployment.yaml && kubectl apply -f ./k3s/service.yaml"
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
