@@ -18,6 +18,13 @@ spec:
         image: berend305/ecommerce-web:latest
         ports:
         - containerPort: 80
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
         env:
         - name: DB_HOST
           value: "ecommerce-db"
