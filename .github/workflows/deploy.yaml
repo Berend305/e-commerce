@@ -6,7 +6,7 @@ on:
 
 jobs:
   build-and-deploy:
-    runs-on: self-hosted # k3s is lokaal bereikbaar via je runner
+    runs-on: self-hosted # k3s is lokaal bereikbaar via runner
 
     steps:
     - name: Checkout code
@@ -28,14 +28,22 @@ jobs:
         mkdir -p $HOME/.kube
         echo "$KUBECONFIG_CONTENT" | base64 -d > $HOME/.kube/config
         chmod 600 $HOME/.kube/config
-      
-  
+
+    - name: Cleanup Existing Resources
+      run: |
+        kubectl delete deployment ecommerce-web --ignore-not-found
+        kubectl delete deployment ecommerce-db --ignore-not-found
+        kubectl delete deployment phpmyadmin --ignore-not-found
+        kubectl delete service ecommerce-web-service --ignore-not-found
+        kubectl delete service ecommerce-db --ignore-not-found
+        kubectl delete service phpmyadmin-service --ignore-not-found
 
     - name: Deploy to k3s Cluster
       run: |
         kubectl apply -f k3s/secrets.yaml
         kubectl apply -f k3s/web-deployment.yaml
         kubectl apply -f k3s/db-deployment.yaml
+        kubectl apply -f k3s/phpmyadmin-deployment.yaml
 
     - name: Verify Deployment
       run: |
