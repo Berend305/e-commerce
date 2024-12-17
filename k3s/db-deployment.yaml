@@ -77,3 +77,15 @@ data:
     ('Product 2', 29.99),
     ('Product 3', 9.99),
     ('Product 4', 49.99);
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ecommerce-db
+spec:
+  selector:
+    app: ecommerce-db  # Zorg ervoor dat dit overeenkomt met de deployment
+  ports:
+    - protocol: TCP
+      port: 3306
+      targetPort: 3306
