@@ -26,16 +26,35 @@ class IntegrationTest extends TestCase
 
     public function testWebserverDatabaseInteraction()
     {
-        // Voeg een product toe aan de database
+        // 1. Voeg een product toe aan de database
         $stmt = $this->pdo->prepare("INSERT INTO products (name, price) VALUES (:name, :price)");
         $stmt->execute(['name' => 'Integration Test Product', 'price' => 99.99]);
 
-        // Simuleer een HTTP-verzoek naar de k3s webserver
+        // 2. Simuleer een HTTP-verzoek naar de k3s webserver
         $webServerUrl = getenv('WEB_SERVER_URL');
         $response = file_get_contents($webServerUrl);
 
-        // Controleer of het product in de HTML-output voorkomt
+        // 3. Controleer of het product in de HTML-output voorkomt
         $this->assertStringContainsString("Integration Test Product", $response);
         $this->assertStringContainsString("99.99", $response);
+    }
+
+    public function testInvalidDatabaseConnection()
+    {
+        // Test een verkeerde databaseverbinding
+        $this->expectException(PDOException::class);
+
+        $dsn = "mysql:host=invalid-host;dbname=" . DB_NAME;
+        new PDO($dsn, DB_USER, DB_PASSWORD);
+    }
+
+    public function testEmptyDatabaseOutput()
+    {
+        // Simuleer een HTTP-verzoek naar de webserver met een lege database
+        $webServerUrl = getenv('WEB_SERVER_URL');
+        $response = file_get_contents($webServerUrl);
+
+        // Controleer dat er geen producten in de output staan
+        $this->assertStringNotContainsString("Product", $response);
     }
 }
