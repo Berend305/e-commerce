@@ -1,11 +1,12 @@
 <?php
-//Test CRUD-functionaliteit en veiligheid van de database
+// Test CRUD-functionaliteit en veiligheid van de database
 use PHPUnit\Framework\TestCase;
 
 class DatabaseTest extends TestCase
 {
     private $pdo;
-//SetUp wordt voor elke test uitgevoerd om een schone products tabel aan te maken.
+
+    // SetUp wordt voor elke test uitgevoerd om een schone products tabel aan te maken.
     protected function setUp(): void
     {
         require_once __DIR__ . '/../web/config.php';
@@ -24,7 +25,8 @@ class DatabaseTest extends TestCase
             )
         ");
     }
-//testCreateProduct Test of een product succesvol wordt toegevoegd.
+
+    // Test of een product succesvol wordt toegevoegd.
     public function testCreateProduct()
     {
         $stmt = $this->pdo->prepare("INSERT INTO products (name, price) VALUES (:name, :price)");
@@ -32,7 +34,8 @@ class DatabaseTest extends TestCase
 
         $this->assertEquals(1, $stmt->rowCount(), "Failed to insert product.");
     }
-//testReadProduct test of een product correct wordt opgehaald.
+
+    // Test of een product correct wordt opgehaald.
     public function testReadProduct()
     {
         $this->pdo->exec("INSERT INTO products (name, price) VALUES ('Test Product', 19.99)");
@@ -43,7 +46,8 @@ class DatabaseTest extends TestCase
         $this->assertEquals('Test Product', $product['name']);
         $this->assertEquals(19.99, $product['price']);
     }
-//testUpdateProduct test of een product correct wordt bijgewerkt.
+
+    // Test of een product correct wordt bijgewerkt.
     public function testUpdateProduct()
     {
         $this->pdo->exec("INSERT INTO products (name, price) VALUES ('Test Product', 19.99)");
@@ -56,7 +60,8 @@ class DatabaseTest extends TestCase
 
         $this->assertEquals(29.99, $product['price']);
     }
-//testDeleteProduct test of een product succesvol wordt verwijderd.
+
+    // Test of een product succesvol wordt verwijderd.
     public function testDeleteProduct()
     {
         $this->pdo->exec("INSERT INTO products (name, price) VALUES ('Test Product', 19.99)");
@@ -69,7 +74,8 @@ class DatabaseTest extends TestCase
 
         $this->assertEquals(0, $count['count'], "Product was not deleted.");
     }
-//testEmptyTable test of de tabel leeg is.
+
+    // Test of de tabel leeg is.
     public function testEmptyTable()
     {
         $stmt = $this->pdo->query("SELECT * FROM products");
@@ -77,7 +83,8 @@ class DatabaseTest extends TestCase
 
         $this->assertEmpty($products, "The table is not empty.");
     }
-//testInvalidInput test of een ongeldige invoer een PDOException veroorzaakt.
+
+    // Test of een ongeldige invoer een PDOException veroorzaakt.
     public function testInvalidInput()
     {
         $this->expectException(PDOException::class);
@@ -86,3 +93,4 @@ class DatabaseTest extends TestCase
         $stmt->execute(['name' => null, 'price' => 'invalid']);
     }
 }
+?>
