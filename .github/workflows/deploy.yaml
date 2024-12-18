@@ -6,18 +6,18 @@ on:
 
 jobs:
   build-and-deploy:
-    runs-on: self-hosted # k3s is lokaal bereikbaar via je runner
+    runs-on: self-hosted
 
     steps:
     # Stap 1: Haal de code op uit je repository
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # Stap 2: Set up PHP zonder sudo
+    # Stap 2: Set up PHP
     - name: Set up PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.3' # Bijgewerkt naar PHP 8.3
+        php-version: '8.3'
         ini-file: production
         tools: composer
 
@@ -25,7 +25,7 @@ jobs:
     - name: Install Dependencies
       run: composer install --no-progress --prefer-dist
 
-    # Stap 4: Cleanup bestaande resources
+    # Stap 4: Cleanup bestaande resources in Kubernetes
     - name: Cleanup Existing Resources
       run: |
         kubectl delete deployment ecommerce-web --ignore-not-found
@@ -54,7 +54,7 @@ jobs:
         echo "$KUBECONFIG_CONTENT" | base64 -d > $HOME/.kube/config
         chmod 600 $HOME/.kube/config
 
-    # Stap 7: Deploy naar k3s cluster
+    # Stap 7: Deploy naar k3s Cluster
     - name: Deploy to k3s Cluster
       run: |
         kubectl apply -f k3s/secrets.yaml
@@ -62,32 +62,44 @@ jobs:
         kubectl apply -f k3s/db-deployment.yaml
         kubectl apply -f k3s/phpmyadmin-deployment.yaml
 
-    # Stap 8: Wacht tot de Pods gereed zijn
+    # Stap 8: Wachten tot alle pods klaar zijn
     - name: Wait for Pods
       run: |
         kubectl wait --for=condition=ready pod -l app=ecommerce --timeout=300s
         kubectl wait --for=condition=ready pod -l app=ecommerce-db --timeout=300s
 
-    # Stap 9: Haal het Node-IP op voor Integratietests
+    # Stap 9: Test Database Connectiviteit
+    - name: Test Database Connectivity
+      run: |
+        kubectl run test-db-connectivity --rm -i --restart=Never --image=mysql:5.7 \
+          --command -- bash -c 'mysql -h ecommerce-db -u root -pecommerce_password -e "SHOW DATABASES;"'
+
+    # Stap 10: Wachten voor extra zekerheid
+    - name: Wait for Database Readiness
+      run: |
+        echo "Wachten tot de database volledig gereed is..."
+        sleep 30
+
+    # Stap 11: Haal het Node-IP op voor Integratietests
     - name: Get External IP
       id: get-ip
       run: |
         NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
         echo "WEB_SERVER_URL=http://$NODE_IP:30080" >> $GITHUB_ENV
 
-    # Stap 10: Run Unit Tests
+    # Stap 12: Voer Unit Tests uit
     - name: Run Unit Tests
       env:
         WEB_SERVER_URL: ${{ env.WEB_SERVER_URL }}
       run: vendor/bin/phpunit --testdox tests/
 
-    # Stap 11: Run Integratietests
+    # Stap 13: Voer Integratietests uit
     - name: Run Integration Tests
       env:
         WEB_SERVER_URL: ${{ env.WEB_SERVER_URL }}
       run: vendor/bin/phpunit --testdox tests/IntegrationTest.php
 
-    # Stap 12: Verifieer de status van pods en services
+    # Stap 14: Verifieer de status van Pods en Services
     - name: Verify Deployment
       run: |
         kubectl get pods
