@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: CI/CD Pipeline with Trivy
 
 on:
   push:
@@ -45,7 +45,17 @@ jobs:
         echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
         docker push $DOCKER_USERNAME/ecommerce-web:latest
 
-    # Stap 6: Configure Kubernetes Context
+    # Stap 6: Scan Docker Image for Vulnerabilities with Trivy
+    - name: Scan Docker Image for Vulnerabilities
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ secrets.DOCKER_USERNAME }}/ecommerce-web:latest
+        format: 'table'
+        exit-code: 1
+        vuln-type: 'os,library'
+        severity: 'CRITICAL,HIGH'
+
+    # Stap 7: Configure Kubernetes Context
     - name: Configure Kubernetes Context
       env:
         KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG_CONTENT }}
@@ -54,7 +64,7 @@ jobs:
         echo "$KUBECONFIG_CONTENT" | base64 -d > $HOME/.kube/config
         chmod 600 $HOME/.kube/config
 
-    # Stap 7: Deploy naar k3s Cluster
+    # Stap 8: Deploy naar k3s Cluster
     - name: Deploy to k3s Cluster
       run: |
         kubectl apply -f k3s/secrets.yaml
@@ -62,44 +72,51 @@ jobs:
         kubectl apply -f k3s/db-deployment.yaml
         kubectl apply -f k3s/phpmyadmin-deployment.yaml
 
-    # Stap 8: Wachten tot alle pods klaar zijn
+    # Stap 9: Wachten tot alle pods klaar zijn
     - name: Wait for Pods
       run: |
         kubectl wait --for=condition=ready pod -l app=ecommerce --timeout=300s
         kubectl wait --for=condition=ready pod -l app=ecommerce-db --timeout=300s
 
-    # Stap 9: Test Database Connectiviteit
+    # Stap 10: Test Database Connectiviteit
     - name: Test Database Connectivity
       run: |
         kubectl run test-db-connectivity --rm -i --restart=Never --image=mysql:5.7 \
           --command -- bash -c 'mysql -h ecommerce-db -u root -pecommerce_password -e "SHOW DATABASES;"'
 
-    # Stap 10: Wachten voor extra zekerheid
+    # Stap 11: Wachten voor extra zekerheid
     - name: Wait for Database Readiness
       run: |
         echo "Wachten tot de database volledig gereed is..."
         sleep 10
 
-    # Stap 11: Haal het Node-IP op voor Integratietests
-#    - name: Get External IP
-#      id: get-ip
-#     run: |
-#        NODE_IP=$(kubectl get node master -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}' || echo "192.168.151.241")
-#          echo "WEB_SERVER_URL=http://$NODE_IP:30080" >> $GITHUB_ENV
+    # Stap 12: Haal het Node-IP op voor Integratietests
+    # - name: Get External IP
+    #   id: get-ip
+    #   run: |
+    #     NODE_IP=$(kubectl get node master -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}' || echo "192.168.151.241")
+    #     echo "WEB_SERVER_URL=http://$NODE_IP:30080" >> $GITHUB_ENV
 
-    # Stap 12: Voer Unit Tests uit
+    # Stap 13: Voer Unit Tests uit
     - name: Run Unit Tests
       env:
         WEB_SERVER_URL: ${ env.WEB_SERVER_URL }}
       run: vendor/bin/phpunit --testdox tests/
 
-    # Stap 13: Voer Integratietests uit
-#    - name: Run Integration Tests
-#      env:
-#        WEB_SERVER_URL: ${env.WEB_SERVER_URL}}  
-#      run: vendor/bin/phpunit --testdox tests/IntegrationTest.php
+    # Stap 14: Fetch Vulnerability Reports
+    - name: Fetch Vulnerability Reports
+      run: |
+        kubectl get vulnerabilityreports -A
 
-    # Stap 14: Verifieer de status van Pods en Services
+    # Stap 15: Dynamisch Beschrijf Vulnerability Report
+    - name: Describe Vulnerability Reports Dynamically
+      run: |
+        for report in $(kubectl get vulnerabilityreports -n default -o jsonpath='{.items[*].metadata.name}'); do
+          echo "\nDescribing report: $report";
+          kubectl describe vulnerabilityreports $report -n default;
+        done
+
+    # Stap 16: Verifieer de status van Pods en Services
     - name: Verify Deployment
       run: |
         kubectl get pods
