@@ -6,23 +6,36 @@ on:
 
 jobs:
   build-and-deploy:
-    runs-on: self-hosted
+    runs-on: self-hosted # k3s is lokaal bereikbaar via je runner
 
     steps:
+    # Stap 1: Haal de code op uit je repository
     - name: Checkout code
       uses: actions/checkout@v3
 
+    # Stap 2: Set up PHP zonder sudo
     - name: Set up PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.3'
+        php-version: '8.3' # Bijgewerkt naar PHP 8.3
         ini-file: production
         tools: composer
 
+    # Stap 3: Installeer Composer dependencies
     - name: Install Dependencies
       run: composer install --no-progress --prefer-dist
 
-    # Build and push Docker image
+    # Stap 4: Cleanup bestaande resources
+    - name: Cleanup Existing Resources
+      run: |
+        kubectl delete deployment ecommerce-web --ignore-not-found
+        kubectl delete deployment ecommerce-db --ignore-not-found
+        kubectl delete deployment phpmyadmin --ignore-not-found
+        kubectl delete service ecommerce-web-service --ignore-not-found
+        kubectl delete service ecommerce-db --ignore-not-found
+        kubectl delete service phpmyadmin-service --ignore-not-found
+
+    # Stap 5: Build en Push Docker Image naar Docker Hub
     - name: Build en Push Docker Image
       env:
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
@@ -32,7 +45,7 @@ jobs:
         echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
         docker push $DOCKER_USERNAME/ecommerce-web:latest
 
-    # Configure Kubernetes context
+    # Stap 6: Configure Kubernetes Context
     - name: Configure Kubernetes Context
       env:
         KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG_CONTENT }}
@@ -41,7 +54,7 @@ jobs:
         echo "$KUBECONFIG_CONTENT" | base64 -d > $HOME/.kube/config
         chmod 600 $HOME/.kube/config
 
-    # Deploy to Kubernetes
+    # Stap 7: Deploy naar k3s cluster
     - name: Deploy to k3s Cluster
       run: |
         kubectl apply -f k3s/secrets.yaml
@@ -49,21 +62,33 @@ jobs:
         kubectl apply -f k3s/db-deployment.yaml
         kubectl apply -f k3s/phpmyadmin-deployment.yaml
 
-    # Wait for Pods to be Ready
+    # Stap 8: Wacht tot de Pods gereed zijn
     - name: Wait for Pods
       run: |
         kubectl wait --for=condition=ready pod -l app=ecommerce --timeout=300s
         kubectl wait --for=condition=ready pod -l app=ecommerce-db --timeout=300s
 
-    # Get External IP
+    # Stap 9: Haal het Node-IP op voor Integratietests
     - name: Get External IP
       id: get-ip
       run: |
         NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
         echo "WEB_SERVER_URL=http://$NODE_IP:30080" >> $GITHUB_ENV
 
-    # Run Unit and Integration Tests
-    - name: Run Tests
+    # Stap 10: Run Unit Tests
+    - name: Run Unit Tests
       env:
         WEB_SERVER_URL: ${{ env.WEB_SERVER_URL }}
-      run: vendor/bin/phpunit --testdox
+      run: vendor/bin/phpunit --testdox tests/
+
+    # Stap 11: Run Integratietests
+    - name: Run Integration Tests
+      env:
+        WEB_SERVER_URL: ${{ env.WEB_SERVER_URL }}
+      run: vendor/bin/phpunit --testdox tests/IntegrationTest.php
+
+    # Stap 12: Verifieer de status van pods en services
+    - name: Verify Deployment
+      run: |
+        kubectl get pods
+        kubectl get services
