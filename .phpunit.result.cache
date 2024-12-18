@@ -1,0 +1,1 @@
+{"version":1,"defects":{"DatabaseTest::testCreateProduct":8,"DatabaseTest::testReadProduct":8,"DatabaseTest::testUpdateProduct":8,"DatabaseTest::testDeleteProduct":8,"DatabaseTest::testEmptyTable":8,"DatabaseTest::testInvalidInput":8},"times":{"ExampleTest::testAddition":0.002}}

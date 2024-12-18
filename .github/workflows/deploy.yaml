@@ -6,11 +6,22 @@ on:
 
 jobs:
   build-and-deploy:
-    runs-on: self-hosted # k3s is lokaal bereikbaar via runner
+    runs-on: self-hosted # k3s is lokaal bereikbaar via je runner
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
+
+    - name: Set up PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+
+    - name: Install Dependencies
+      run: composer install --no-progress --no-suggest --prefer-dist
+
+    - name: Run Unit Tests
+      run: vendor/bin/phpunit --testdox tests/
 
     - name: Build en Push Docker Image
       env:
@@ -29,21 +40,23 @@ jobs:
         echo "$KUBECONFIG_CONTENT" | base64 -d > $HOME/.kube/config
         chmod 600 $HOME/.kube/config
 
-    - name: Cleanup Existing Resources
-      run: |
-        kubectl delete deployment ecommerce-web --ignore-not-found
-        kubectl delete deployment ecommerce-db --ignore-not-found
-        kubectl delete deployment phpmyadmin --ignore-not-found
-        kubectl delete service ecommerce-web-service --ignore-not-found
-        kubectl delete service ecommerce-db --ignore-not-found
-        kubectl delete service phpmyadmin-service --ignore-not-found
-
     - name: Deploy to k3s Cluster
       run: |
         kubectl apply -f k3s/secrets.yaml
         kubectl apply -f k3s/web-deployment.yaml
         kubectl apply -f k3s/db-deployment.yaml
         kubectl apply -f k3s/phpmyadmin-deployment.yaml
+
+    - name: Get External IP
+      id: get-ip
+      run: |
+        NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
+        echo "WEB_SERVER_URL=http://$NODE_IP:30080" >> $GITHUB_ENV
+
+    - name: Run Integration Tests
+      env:
+        WEB_SERVER_URL: ${{ env.WEB_SERVER_URL }}
+      run: vendor/bin/phpunit --testdox tests/IntegrationTest.php
 
     - name: Verify Deployment
       run: |
