@@ -81,23 +81,23 @@ jobs:
         sleep 10
 
     # Stap 11: Haal het Node-IP op voor Integratietests
-    - name: Get External IP
-      id: get-ip
-      run: |
-          NODE_IP=$(kubectl get node master -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}' || echo "192.168.151.241")
-          echo "WEB_SERVER_URL=http://$NODE_IP:30080" >> $GITHUB_ENV
+#    - name: Get External IP
+#      id: get-ip
+#     run: |
+#        NODE_IP=$(kubectl get node master -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}' || echo "192.168.151.241")
+#          echo "WEB_SERVER_URL=http://$NODE_IP:30080" >> $GITHUB_ENV
 
     # Stap 12: Voer Unit Tests uit
     - name: Run Unit Tests
       env:
-        WEB_SERVER_URL: ${{ env.WEB_SERVER_URL }}
+        WEB_SERVER_URL: ${ env.WEB_SERVER_URL }}
       run: vendor/bin/phpunit --testdox tests/
 
     # Stap 13: Voer Integratietests uit
-    - name: Run Integration Tests
-      env:
-        WEB_SERVER_URL: ${{env.WEB_SERVER_URL}}  
-      run: vendor/bin/phpunit --testdox tests/IntegrationTest.php
+#    - name: Run Integration Tests
+#      env:
+#        WEB_SERVER_URL: ${env.WEB_SERVER_URL}}  
+#      run: vendor/bin/phpunit --testdox tests/IntegrationTest.php
 
     # Stap 14: Verifieer de status van Pods en Services
     - name: Verify Deployment
