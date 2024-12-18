@@ -1,5 +1,5 @@
 <?php
-/*
+
 // Test CRUD-functionaliteit en veiligheid van de database
 use PHPUnit\Framework\TestCase;
 
@@ -94,5 +94,4 @@ class DatabaseTest extends TestCase
         $stmt->execute(['name' => null, 'price' => 'invalid']);
     }
 }
-*/
 ?>

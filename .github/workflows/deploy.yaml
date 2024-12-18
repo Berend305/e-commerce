@@ -84,8 +84,8 @@ jobs:
     - name: Get External IP
       id: get-ip
       run: |
-        NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
-        echo "WEB_SERVER_URL=http://$NODE_IP:30080" >> $GITHUB_ENV
+          NODE_IP=$(kubectl get node master -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}' || echo "192.168.151.241")
+          echo "WEB_SERVER_URL=http://$NODE_IP:30080" >> $GITHUB_ENV
 
     # Stap 12: Voer Unit Tests uit
     - name: Run Unit Tests
