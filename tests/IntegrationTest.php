@@ -60,4 +60,5 @@ class IntegrationTest extends TestCase
         $this->assertStringNotContainsString("Product", $response);
     }
 }
-?>*/
+?*/
+?>
