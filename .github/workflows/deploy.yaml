@@ -96,7 +96,7 @@ jobs:
     # Stap 13: Voer Integratietests uit
     - name: Run Integration Tests
       env:
-        WEB_SERVER_URL: ${{ env.WEB_SERVER_URL }}
+        WEB_SERVER_URL: ${{env.WEB_SERVER_URL}}  
       run: vendor/bin/phpunit --testdox tests/IntegrationTest.php
 
     # Stap 14: Verifieer de status van Pods en Services
