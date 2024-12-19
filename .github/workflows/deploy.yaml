@@ -72,12 +72,6 @@ jobs:
         kubectl apply -f k3s/db-deployment.yaml
         kubectl apply -f k3s/phpmyadmin-deployment.yaml
 
-    # Stap 9: Wachten tot alle pods klaar zijn
-    - name: Wait for Pods
-      run: |
-        kubectl wait --for=condition=ready pod -l app=ecommerce --timeout=300s
-        kubectl wait --for=condition=ready pod -l app=ecommerce-db --timeout=300s
-
     # Stap 10: Test Database Connectiviteit
     - name: Test Database Connectivity
       run: |
