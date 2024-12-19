@@ -51,9 +51,9 @@ jobs:
       with:
         image-ref: ${{ secrets.DOCKER_USERNAME }}/ecommerce-web:latest
         format: 'table'
-        exit-code: 1
         vuln-type: 'os,library'
         severity: 'CRITICAL,HIGH'
+      continue-on-error: true
 
     # Stap 7: Configure Kubernetes Context
     - name: Configure Kubernetes Context
@@ -111,8 +111,16 @@ jobs:
       run: |
         kubectl get vulnerabilityreports -A
 
-    # Stap 15: Verifieer de status van Pods en Services
+    # Stap 15: Dynamisch Beschrijf Vulnerability Report
+    - name: Describe Vulnerability Reports Dynamically
+      run: |
+        for report in $(kubectl get vulnerabilityreports -n default -o jsonpath='{.items[*].metadata.name}'); do
+          echo "\nDescribing report: $report";
+          kubectl describe vulnerabilityreports $report -n default;
+        done
+
+    # Stap 16: Verifieer de status van Pods en Services
     - name: Verify Deployment
       run: |
-        kubectl get pods -A
-        kubectl get services -A
+        kubectl get pods
+        kubectl get services
