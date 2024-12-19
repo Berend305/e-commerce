@@ -51,9 +51,9 @@ jobs:
       with:
         image-ref: ${{ secrets.DOCKER_USERNAME }}/ecommerce-web:latest
         format: 'table'
+        exit-code: 1
         vuln-type: 'os,library'
         severity: 'CRITICAL,HIGH'
-      continue-on-error: true
 
     # Stap 7: Configure Kubernetes Context
     - name: Configure Kubernetes Context
@@ -77,6 +77,9 @@ jobs:
       run: |
         kubectl wait --for=condition=ready pod -l app=ecommerce --timeout=300s
         kubectl wait --for=condition=ready pod -l app=ecommerce-db --timeout=300s
+        kubectl wait --for=condition=ready pod -n monitoring --selector=app.kubernetes.io/component=alertmanager --timeout=300s
+        kubectl wait --for=condition=ready pod -n monitoring --selector=app.kubernetes.io/component=prometheus --timeout=300s
+        kubectl wait --for=condition=ready pod -n monitoring --selector=app.kubernetes.io/name=grafana --timeout=300s
 
     # Stap 10: Test Database Connectiviteit
     - name: Test Database Connectivity
@@ -108,16 +111,8 @@ jobs:
       run: |
         kubectl get vulnerabilityreports -A
 
-    # Stap 15: Dynamisch Beschrijf Vulnerability Report
-    - name: Describe Vulnerability Reports Dynamically
-      run: |
-        for report in $(kubectl get vulnerabilityreports -n default -o jsonpath='{.items[*].metadata.name}'); do
-          echo "\nDescribing report: $report";
-          kubectl describe vulnerabilityreports $report -n default;
-        done
-
-    # Stap 16: Verifieer de status van Pods en Services
+    # Stap 15: Verifieer de status van Pods en Services
     - name: Verify Deployment
       run: |
-        kubectl get pods
-        kubectl get services
+        kubectl get pods -A
+        kubectl get services -A
