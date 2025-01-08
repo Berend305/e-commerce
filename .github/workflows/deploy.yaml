@@ -1,4 +1,4 @@
-name: CI/CD Pipeline with Trivy and ELK Integration
+name: CI/CD Pipeline with Trivy
 
 on:
   push:
@@ -84,54 +84,40 @@ jobs:
         kubectl run test-db-connectivity --rm -i --restart=Never --image=mysql:5.7 \
           --command -- bash -c 'mysql -h ecommerce-db -u root -pecommerce_password -e "SHOW DATABASES;"'
 
-    # Stap 11: Haal Node IP op en stel omgevingsvariabelen in
-    - name: Fetch Node IP
-      id: get-node-ip
+    # Stap 11: Wachten voor extra zekerheid
+    - name: Wait for Database Readiness
       run: |
-        NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
-        echo "NODE_IP=$NODE_IP" >> $GITHUB_ENV
+        echo "Wachten tot de database volledig gereed is..."
+        sleep 10
 
-    # Stap 12: Unit Tests uitvoeren
+    # Stap 12: Haal het Node-IP op voor Integratietests
+    # - name: Get External IP
+    #   id: get-ip
+    #   run: |
+    #     NODE_IP=$(kubectl get node master -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}' || echo "192.168.151.241")
+    #     echo "WEB_SERVER_URL=http://$NODE_IP:30080" >> $GITHUB_ENV
+
+    # Stap 13: Voer Unit Tests uit
     - name: Run Unit Tests
       env:
-        WEB_SERVER_URL: http://${{ env.NODE_IP }}:30080
+        WEB_SERVER_URL: ${ env.WEB_SERVER_URL }}
       run: vendor/bin/phpunit --testdox tests/
 
-    # Stap 13: OWASP Dependency Check
-    - name: OWASP Dependency Check
-      uses: dependency-check/scan-action@v2
-      with:
-        project: "E-commerce"
-        format: "HTML"
-        outputDirectory: "owasp-report"
-      continue-on-error: true
-
-    # Stap 14: Upload OWASP Dependency Report
-    - name: Upload Dependency Report
-      uses: actions/upload-artifact@v3
-      with:
-        name: owasp-dependency-report
-        path: owasp-report/dependency-check-report.html
-
-    # Stap 15: Verifieer Vulnerability Reports
-    - name: Verify Vulnerability Reports
+    # Stap 14: Fetch Vulnerability Reports
+    - name: Fetch Vulnerability Reports
       run: |
         kubectl get vulnerabilityreports -A
-        for report in $(kubectl get vulnerabilityreports -A -o jsonpath='{.items[*].metadata.name}'); do
-          echo "Describing report: $report"
-          kubectl describe vulnerabilityreports $report -n default
+
+    # Stap 15: Dynamisch Beschrijf Vulnerability Report
+    - name: Describe Vulnerability Reports Dynamically
+      run: |
+        for report in $(kubectl get vulnerabilityreports -n default -o jsonpath='{.items[*].metadata.name}'); do
+          echo "\nDescribing report: $report";
+          kubectl describe vulnerabilityreports $report -n default;
         done
 
-    # Stap 16: Verbind met ELK Stack
-    - name: Send Logs to ELK
+    # Stap 16: Verifieer de status van Pods en Services
+    - name: Verify Deployment
       run: |
-        echo "Stuur Trivy-scan logs naar ELK..."
-        curl -XPOST -H "Content-Type: application/json" \
-          -d '{"log": "Trivy Scan Result", "details": "$(cat trivy-output.json)"}' \
-          http://elk-stack-ip:9200/trivy-logs/_doc/
-
-    # Stap 17: Controleer Kubernetes Resources
-    - name: Verify Kubernetes Resources
-      run: |
-        kubectl get pods -o wide
-        kubectl get services -o wide
+        kubectl get pods
+        kubectl get services
